@@ -29,7 +29,7 @@ class LanguageModel(object):
         with open(model_path, 'rb') as f:
             freq = pickle.load(f)
 
-        ngram = model_path.split('-')[0]
+        ngram = int(model_path.split('-')[0][-1])
         return LanguageModel(ngram, freq)
     
     def save(self):
@@ -62,11 +62,24 @@ class LanguageModel(object):
         Return:
             p(float): the probability
         """
-        lambda_ = 0.8
-        xy = self.freq[condition + target]
-        x = self.freq[condition] if self.freq[condition] else 1
-        y = self.freq[target] if self.freq[target] else 1
-        p = lambda_ * xy / x + (1 - lambda_) * x / self.total_single_cnt
+        if self.ngram == 2:
+            lambda_ = 0.8
+            xy = self.freq[condition + target]
+            x = self.freq[condition] if self.freq[condition] else 1
+            y = self.freq[target] if self.freq[target] else 1
+            p = lambda_ * xy / x + (1 - lambda_) * x / self.total_single_cnt
+        else:
+            lambda_ = 0.4
+            beta = 0.4
+            xyz = self.freq[condition + target]
+            xy = self.freq[condition] if self.freq[condition] else 1.
+            yz = self.freq[condition[-1] + target]
+            y = self.freq[condition[-1]] if self.freq[condition[-1]] else 1.
+            z = self.freq[target] if self.freq[target] else 1.
+            t = self.total_single_cnt
+
+            # print("{}\t{}\t{}\t{}\t{}".format(xyz, xy, yz, y, z))
+            p = lambda_ * xyz / xy + beta * yz / y + (1 - lambda_ - beta) * z / t
         return p
 
     def __getitem__(self, tokens):
@@ -74,7 +87,7 @@ class LanguageModel(object):
 
 
 def train(datafile="data/corpus.dat"):
-    lm = LanguageModel(ngram=2)
+    lm = LanguageModel(ngram=3)
     
     with open(datafile, 'r') as df:
         for i, line in enumerate(df.readlines()):
